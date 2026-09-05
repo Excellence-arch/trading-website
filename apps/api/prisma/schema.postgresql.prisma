@@ -1,0 +1,324 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id           String         @id @default(uuid())
+  email        String         @unique
+  passwordHash String
+  name         String
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  settings     UserSettings?
+  watchlists   Watchlist[]
+  trades       Trade[]
+  strategies   Strategy[]
+  paperAccount PaperAccount?
+  drawings     ChartDrawing[]
+  chartLayouts ChartLayout[]
+  notes        TradeNote[]
+  tags         Tag[]
+}
+
+model UserSettings {
+  id                 String   @id @default(uuid())
+  userId             String   @unique
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  defaultRiskPercent Float    @default(1.0)
+  defaultTimeframe   String   @default("1h")
+  currency           String   @default("USD")
+  timezone           String   @default("UTC")
+  demoMode           Boolean  @default(false)
+  theme              String   @default("dark")
+  updatedAt          DateTime @updatedAt
+}
+
+model Watchlist {
+  id        String          @id @default(uuid())
+  userId    String
+  user      User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String          @default("Default Watchlist")
+  items     WatchlistItem[]
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+
+  @@index([userId])
+}
+
+model WatchlistItem {
+  id          String    @id @default(uuid())
+  watchlistId String
+  watchlist   Watchlist @relation(fields: [watchlistId], references: [id], onDelete: Cascade)
+  symbol      String
+  sortOrder   Int       @default(0)
+  addedAt     DateTime  @default(now())
+
+  @@unique([watchlistId, symbol])
+  @@index([watchlistId])
+}
+
+model Strategy {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name        String
+  description String?
+  color       String   @default("#3b82f6")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  trades      Trade[]
+
+  @@unique([userId, name])
+  @@index([userId])
+}
+
+model Trade {
+  id          String         @id @default(uuid())
+  userId      String
+  user        User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  strategyId  String?
+  strategy    Strategy?      @relation(fields: [strategyId], references: [id], onDelete: SetNull)
+
+  symbol      String
+  direction   String         // LONG, SHORT
+  entryPrice  Float
+  exitPrice   Float?
+  stopLoss    Float
+  takeProfit  Float
+  quantity    Float
+  leverage    Float          @default(1.0)
+  fees        Float          @default(0.0)
+  pnl         Float?
+  rMultiple   Float?
+  status      String         @default("OPEN") // OPEN, CLOSED, CANCELLED
+  source      String         @default("MANUAL") // MANUAL, PAPER, REPLAY, IMPORTED
+  timeframe   String         @default("1h")
+
+  enteredAt   DateTime       @default(now())
+  exitedAt    DateTime?
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  journal     TradeJournal?
+  executions  TradeExecution[]
+  notes       TradeNote[]
+  screenshots TradeScreenshot[]
+  tags        TradeTag[]
+  aiReview    AIReview?
+
+  @@index([userId])
+  @@index([symbol])
+  @@index([status])
+  @@index([enteredAt])
+}
+
+model TradeExecution {
+  id          String   @id @default(uuid())
+  tradeId     String
+  trade       Trade    @relation(fields: [tradeId], references: [id], onDelete: Cascade)
+  side        String   // BUY, SELL
+  price       Float
+  quantity    Float
+  fee         Float    @default(0.0)
+  executedAt  DateTime @default(now())
+
+  @@index([tradeId])
+}
+
+model TradeJournal {
+  id               String   @id @default(uuid())
+  tradeId          String   @unique
+  trade            Trade    @relation(fields: [tradeId], references: [id], onDelete: Cascade)
+
+  setupType        String?
+  reasonForEntry   String?
+  marketCondition  String?
+  emotionBefore    String?
+  emotionDuring    String?
+  emotionAfter     String?
+  mistakesJson     String   @default("[]")
+  lessons          String?
+  notes            String?
+  chartSnapshot    String?
+
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
+
+model TradeScreenshot {
+  id        String   @id @default(uuid())
+  tradeId   String
+  trade     Trade    @relation(fields: [tradeId], references: [id], onDelete: Cascade)
+  type      String   @default("SNAPSHOT")
+  url       String
+  caption   String?
+  createdAt DateTime @default(now())
+
+  @@index([tradeId])
+}
+
+model TradeNote {
+  id        String   @id @default(uuid())
+  tradeId   String
+  trade     Trade    @relation(fields: [tradeId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  content   String
+  createdAt DateTime @default(now())
+
+  @@index([tradeId])
+  @@index([userId])
+}
+
+model Tag {
+  id        String     @id @default(uuid())
+  userId    String
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String
+  color     String     @default("#64748b")
+  trades    TradeTag[]
+
+  @@unique([userId, name])
+  @@index([userId])
+}
+
+model TradeTag {
+  tradeId String
+  trade   Trade  @relation(fields: [tradeId], references: [id], onDelete: Cascade)
+  tagId   String
+  tag     Tag    @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([tradeId, tagId])
+}
+
+model PaperAccount {
+  id             String          @id @default(uuid())
+  userId         String          @unique
+  user           User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  balance        Float           @default(10000.0)
+  equity         Float           @default(10000.0)
+  initialBalance Float           @default(10000.0)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  positions      PaperPosition[]
+  orders         PaperOrder[]
+}
+
+model PaperPosition {
+  id            String       @id @default(uuid())
+  accountId     String
+  account       PaperAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  symbol        String
+  direction     String
+  entryPrice    Float
+  currentPrice  Float
+  quantity      Float
+  stopLoss      Float?
+  takeProfit    Float?
+  leverage      Float        @default(1.0)
+  margin        Float
+  unrealizedPnl Float        @default(0.0)
+  enteredAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  @@index([accountId])
+}
+
+model PaperOrder {
+  id         String       @id @default(uuid())
+  accountId  String
+  account    PaperAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  symbol     String
+  type       String
+  side       String
+  price      Float
+  quantity   Float
+  stopLoss   Float?
+  takeProfit Float?
+  status     String       @default("PENDING")
+  createdAt  DateTime     @default(now())
+  filledAt   DateTime?
+
+  @@index([accountId])
+}
+
+model Candle {
+  id        String   @id @default(uuid())
+  symbol    String
+  timeframe String
+  timestamp BigInt
+  open      Float
+  high      Float
+  low       Float
+  close     Float
+  volume    Float
+
+  @@unique([symbol, timeframe, timestamp])
+  @@index([symbol, timeframe])
+  @@index([timestamp])
+}
+
+model ChartDrawing {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  symbol      String
+  timeframe   String
+  toolType    String
+  pointsJson  String
+  styleJson   String
+  text        String?
+  isLocked    Boolean  @default(false)
+  visible     Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([userId, symbol])
+}
+
+model ChartLayout {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name        String   @default("Default Layout")
+  symbol      String   @default("BTCUSDT")
+  timeframe   String   @default("1h")
+  indicators  String   @default("[]")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([userId])
+}
+
+model IndicatorPreset {
+  id          String   @id @default(uuid())
+  userId      String
+  name        String
+  configJson  String
+  createdAt   DateTime @default(now())
+
+  @@index([userId])
+}
+
+model AIReview {
+  id                         String   @id @default(uuid())
+  tradeId                    String   @unique
+  trade                      Trade    @relation(fields: [tradeId], references: [id], onDelete: Cascade)
+  summary                    String
+  strengthsJson              String   @default("[]")
+  mistakesJson               String   @default("[]")
+  riskManagementAssessment   String
+  entryQualityAssessment     String
+  exitQualityAssessment      String
+  psychologicalObservations  String
+  suggestionsJson            String   @default("[]")
+  generatedAt                DateTime @default(now())
+}

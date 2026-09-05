@@ -1,0 +1,70 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Environment variables & secrets (keep .env.example tracked)
+.env
+.env*.local
+.env.production
+.env.staging
+!.env.example
+
+# Next.js build output & cache
+.next/
+out/
+build/
+.turbo/
+
+# TypeScript build outputs & incremental compilation caches
+dist/
+*.tsbuildinfo
+
+# Database & SQLite files (local development databases)
+*.db
+*.db-journal
+*.sqlite
+*.sqlite-journal
+apps/api/prisma/*.db
+apps/api/prisma/*.db-journal
+
+# Logs & debugging
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Testing & Coverage
+coverage/
+.nyc_output/
+*.lcov
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+Desktop.ini
+
+# IDE & Editor files
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Temporary files & scratch directories
+.temp/
+.tmp/
+tmp/
+temp/

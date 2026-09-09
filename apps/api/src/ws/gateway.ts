@@ -128,6 +128,14 @@ export class WebSocketGateway {
             ws.send(msg);
           }
         }
+      } else if (event === 'trade:update') {
+        const trade = payload as { symbol: string };
+        const msg = JSON.stringify({ type: 'trade:update', data: trade });
+        for (const [ws, state] of this.clientStates) {
+          if (ws.readyState === WebSocket.OPEN && state.subscribedTickers.has(trade.symbol)) {
+            ws.send(msg);
+          }
+        }
       }
     });
   }

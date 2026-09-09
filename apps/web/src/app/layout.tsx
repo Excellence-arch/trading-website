@@ -21,7 +21,11 @@ export default function RootLayout({
         suppressHydrationWarning
       >
         <AuthProvider>
-          <MarketProvider>{children}</MarketProvider>
+          <MarketProvider>
+            <div suppressHydrationWarning className="min-h-screen flex flex-col">
+              {children}
+            </div>
+          </MarketProvider>
         </AuthProvider>
       </body>
     </html>

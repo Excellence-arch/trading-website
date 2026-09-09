@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { ChevronLeft, ChevronRight, Layers, Plus, Search, Trash2, TrendingDown, TrendingUp, X } from 'lucide-react';
 import { useMarket } from '../../context/MarketContext';
 import { formatNumber, formatPercent, formatPrice } from '../../lib/utils';
@@ -16,6 +16,36 @@ export function Watchlist({ isCollapsed = false, onToggleCollapse }: WatchlistPr
   const [search, setSearch] = useState('');
   const [isAdding, setIsAdding] = useState(false);
   const [newSymbolInput, setNewSymbolInput] = useState('');
+
+  // Track live price flash per symbol
+  const prevPricesRef = useRef<Record<string, number>>({});
+  const [flashMap, setFlashMap] = useState<Record<string, 'up' | 'down'>>({});
+
+  useEffect(() => {
+    const newFlashes: Record<string, 'up' | 'down'> = {};
+    let hasFlash = false;
+
+    Object.entries(tickers).forEach(([sym, ticker]) => {
+      const prev = prevPricesRef.current[sym];
+      if (prev !== undefined && ticker.price !== prev) {
+        newFlashes[sym] = ticker.price > prev ? 'up' : 'down';
+        hasFlash = true;
+      }
+      prevPricesRef.current[sym] = ticker.price;
+    });
+
+    if (hasFlash) {
+      setFlashMap((prev) => ({ ...prev, ...newFlashes }));
+      const timer = setTimeout(() => {
+        setFlashMap((prev) => {
+          const next = { ...prev };
+          Object.keys(newFlashes).forEach((k) => delete next[k]);
+          return next;
+        });
+      }, 450);
+      return () => clearTimeout(timer);
+    }
+  }, [tickers]);
 
   const filteredSymbols = symbolsList.filter((s) =>
     s.toLowerCase().includes(search.toLowerCase())
@@ -136,12 +166,15 @@ export function Watchlist({ isCollapsed = false, onToggleCollapse }: WatchlistPr
           const ticker = tickers[sym];
           const isSelected = sym === currentSymbol;
           const isPositive = (ticker?.changePercent24h || 0) >= 0;
+          const flash = flashMap[sym];
 
           return (
             <div
               key={sym}
               onClick={() => setCurrentSymbol(sym)}
-              className={`group flex items-center justify-between p-2.5 cursor-pointer transition ${
+              className={`group flex items-center justify-between p-2.5 cursor-pointer transition relative ${
+                flash === 'up' ? 'watchlist-tick-up' : flash === 'down' ? 'watchlist-tick-down' : ''
+              } ${
                 isSelected
                   ? 'bg-brand/15 border-l-2 border-brand text-white'
                   : 'hover:bg-surface-elevated/70 text-slate-300'
@@ -149,7 +182,16 @@ export function Watchlist({ isCollapsed = false, onToggleCollapse }: WatchlistPr
             >
               {/* Left Info: Symbol & Volume */}
               <div className="flex flex-col text-left">
-                <span className="font-mono font-bold text-xs tracking-tight">{sym}</span>
+                <div className="flex items-center gap-1.5">
+                  <span className="font-mono font-bold text-xs tracking-tight">{sym}</span>
+                  {flash && (
+                    <span
+                      className={`w-1.5 h-1.5 rounded-full ${
+                        flash === 'up' ? 'bg-emerald-400' : 'bg-rose-400'
+                      } animate-ping`}
+                    />
+                  )}
+                </div>
                 <span className="text-[10px] text-slate-500 font-mono">
                   Vol: {ticker ? formatNumber(ticker.volume24h, 0) : '—'}
                 </span>
@@ -158,7 +200,15 @@ export function Watchlist({ isCollapsed = false, onToggleCollapse }: WatchlistPr
               {/* Right Info: Price & 24h Change */}
               <div className="flex items-center gap-2">
                 <div className="flex flex-col text-right font-mono">
-                  <span className="text-xs font-semibold text-white">
+                  <span
+                    className={`text-xs font-semibold px-1 rounded transition-all duration-200 ${
+                      flash === 'up'
+                        ? 'text-emerald-400 bg-emerald-500/20'
+                        : flash === 'down'
+                        ? 'text-rose-400 bg-rose-500/20'
+                        : 'text-white'
+                    }`}
+                  >
                     {ticker ? formatPrice(ticker.price, sym) : '—'}
                   </span>
                   <div

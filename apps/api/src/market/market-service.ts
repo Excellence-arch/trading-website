@@ -43,6 +43,10 @@ export class MarketDataService {
       this.simulator.onCandleUpdate((symbol, timeframe, candle) => {
         this.broadcast('candle:update', { symbol, timeframe, candle });
       });
+
+      this.simulator.onTradeUpdate((trade) => {
+        this.broadcast('trade:update', trade);
+      });
     }
   }
 
@@ -165,6 +169,10 @@ export class MarketDataService {
       this.binance.subscribeStream(`${sym}@ticker`);
       if (timeframe) {
         this.binance.subscribeStream(`${sym}@kline_${timeframe}`);
+      }
+    } else {
+      if (timeframe) {
+        this.simulator.ensureTimeframe(symbol, timeframe);
       }
     }
   }

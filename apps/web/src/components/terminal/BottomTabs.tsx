@@ -17,6 +17,7 @@ import {
 import type { PaperPosition, Trade } from '@trading/types';
 import { useMarket } from '../../context/MarketContext';
 import { ApiClient } from '../../lib/api';
+import { wsClient, PublicTrade } from '../../lib/websocket';
 import { formatNumber, formatPercent, formatPrice, formatRMultiple, formatShortDate } from '../../lib/utils';
 
 interface BottomTabsProps {
@@ -34,7 +35,7 @@ export function BottomTabs({
 }: BottomTabsProps) {
   const { currentSymbol, currentTicker } = useMarket();
 
-  const [activeTab, setActiveTab] = useState<'positions' | 'trades' | 'ai' | 'collapsed'>('positions');
+  const [activeTab, setActiveTab] = useState<'positions' | 'trades' | 'tape' | 'ai' | 'collapsed'>('positions');
 
   useEffect(() => {
     if (isCollapsed !== undefined) {
@@ -43,8 +44,18 @@ export function BottomTabs({
   }, [isCollapsed]);
   const [positions, setPositions] = useState<PaperPosition[]>([]);
   const [recentTrades, setRecentTrades] = useState<Trade[]>([]);
+  const [liveTrades, setLiveTrades] = useState<PublicTrade[]>([]);
   const [paperAccount, setPaperAccount] = useState<any>(null);
   const [isClosing, setIsClosing] = useState<string | null>(null);
+
+  // Subscribe to real-time live order flow tape
+  useEffect(() => {
+    setLiveTrades([]);
+    const unsub = wsClient.subscribeTrade(currentSymbol, (trade) => {
+      setLiveTrades((prev) => [trade, ...prev.slice(0, 35)]);
+    });
+    return unsub;
+  }, [currentSymbol]);
 
   const fetchPaperData = async () => {
     try {
@@ -135,6 +146,20 @@ export function BottomTabs({
             <History className="w-3.5 h-3.5" />
             <span>Recent Closed Trades</span>
             <span className="text-[10px] text-slate-500 font-mono">({recentTrades.length})</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('tape')}
+            className={`px-3 py-1.5 font-medium rounded-t flex items-center gap-1.5 transition ${
+              activeTab === 'tape'
+                ? 'bg-surface text-white border-t-2 border-emerald-400 font-semibold'
+                : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <Activity className="w-3.5 h-3.5 text-emerald-400 animate-pulse" />
+            <span>Live Order Flow Tape</span>
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 live-beacon" />
+            <span className="text-[10px] text-slate-500 font-mono">({liveTrades.length})</span>
           </button>
 
           <button
@@ -306,6 +331,85 @@ export function BottomTabs({
                 </tbody>
               </table>
             )}
+          </div>
+        )}
+
+        {/* Live Order Flow Tape Tab */}
+        {activeTab === 'tape' && (
+          <div className="flex-1 flex flex-col overflow-hidden p-2">
+            {/* Real-Time Buy / Sell Pressure Gauge */}
+            <div className="flex items-center justify-between px-2.5 py-1.5 bg-surface-subtle border border-border rounded mb-1.5">
+              <div className="flex items-center gap-2.5">
+                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Order Pressure:</span>
+                <span className="text-emerald-400 font-bold font-mono text-[11px]">
+                  {liveTrades.length > 0 ? Math.round((liveTrades.filter((t) => t.side === 'BUY').length / liveTrades.length) * 100) : 50}% BUYS
+                </span>
+                <div className="w-28 h-1.5 bg-rose-500/40 rounded-full overflow-hidden flex">
+                  <div
+                    className="bg-emerald-400 h-full transition-all duration-300"
+                    style={{
+                      width: `${liveTrades.length > 0 ? (liveTrades.filter((t) => t.side === 'BUY').length / liveTrades.length) * 100 : 50}%`,
+                    }}
+                  />
+                </div>
+                <span className="text-rose-400 font-bold font-mono text-[11px]">
+                  {liveTrades.length > 0 ? Math.round((liveTrades.filter((t) => t.side === 'SELL').length / liveTrades.length) * 100) : 50}% SELLS
+                </span>
+              </div>
+              <div className="flex items-center gap-1.5 text-[10px] text-slate-400 font-mono">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 live-beacon" />
+                <span>Live Feed: 5 Ticks/Sec</span>
+              </div>
+            </div>
+
+            {/* Trades Stream Table */}
+            <div className="flex-1 overflow-y-auto">
+              {liveTrades.length === 0 ? (
+                <div className="h-full flex items-center justify-center text-slate-500 text-xs font-mono">
+                  <span>Listening for incoming market transactions for {currentSymbol}...</span>
+                </div>
+              ) : (
+                <table className="w-full text-left font-mono">
+                  <thead>
+                    <tr className="border-b border-border/80 text-[10px] text-slate-400 uppercase tracking-wider sticky top-0 bg-surface">
+                      <th className="py-1 px-3">Time</th>
+                      <th className="py-1 px-3">Side</th>
+                      <th className="py-1 px-3">Price</th>
+                      <th className="py-1 px-3">Amount</th>
+                      <th className="py-1 px-3 text-right">Total Notional</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border/30">
+                    {liveTrades.map((t) => {
+                      const isBuy = t.side === 'BUY';
+                      const date = new Date(t.timestamp);
+                      const timeStr = `${date.toTimeString().split(' ')[0]}.${String(date.getMilliseconds()).padStart(3, '0').slice(0, 2)}`;
+                      return (
+                        <tr key={t.id} className="tape-row-anim hover:bg-surface-elevated/50 transition">
+                          <td className="py-1 px-3 text-slate-400 text-[11px]">{timeStr}</td>
+                          <td className="py-1 px-3">
+                            <span
+                              className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                                isBuy ? 'bg-emerald-500/20 text-emerald-400' : 'bg-rose-500/20 text-rose-400'
+                              }`}
+                            >
+                              {t.side}
+                            </span>
+                          </td>
+                          <td className={`py-1 px-3 font-semibold text-[11px] ${isBuy ? 'text-emerald-400' : 'text-rose-400'}`}>
+                            {formatPrice(t.price, currentSymbol)}
+                          </td>
+                          <td className="py-1 px-3 text-slate-200 text-[11px]">{t.amount}</td>
+                          <td className="py-1 px-3 text-right text-slate-300 text-[11px]">
+                            ${formatNumber(t.price * t.amount, 2)}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              )}
+            </div>
           </div>
         )}
 

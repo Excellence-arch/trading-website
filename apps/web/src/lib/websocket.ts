@@ -1,5 +1,14 @@
 import type { Candle, Ticker, Timeframe, WSServerMessage } from '@trading/types';
 
+export interface PublicTrade {
+  id: string;
+  symbol: string;
+  price: number;
+  amount: number;
+  side: 'BUY' | 'SELL';
+  timestamp: number;
+}
+
 export class WebSocketClient {
   private ws: WebSocket | null = null;
   private url: string;
@@ -7,6 +16,7 @@ export class WebSocketClient {
   private isExplicitlyClosed = false;
   private tickerListeners = new Map<string, Set<(ticker: Ticker) => void>>();
   private candleListeners = new Map<string, Set<(candle: Candle) => void>>();
+  private tradeListeners = new Map<string, Set<(trade: PublicTrade) => void>>();
   private statusListeners = new Set<(status: string, isDemo?: boolean) => void>();
 
   constructor(url?: string) {
@@ -70,6 +80,12 @@ export class WebSocketClient {
       if (listeners) {
         listeners.forEach((fn) => fn(msg.data));
       }
+    } else if (msg.type === 'trade:update') {
+      const trade = (msg as any).data as PublicTrade;
+      const listeners = this.tradeListeners.get(trade.symbol);
+      if (listeners) {
+        listeners.forEach((fn) => fn(trade));
+      }
     } else if (msg.type === 'connection:status') {
       this.statusListeners.forEach((fn) => fn(msg.status, (msg as any).isDemo));
     }
@@ -123,6 +139,25 @@ export class WebSocketClient {
         if (listeners.size === 0) {
           this.candleListeners.delete(key);
           this.send({ action: 'unsubscribe:candle', symbol: symbol.toUpperCase(), timeframe });
+        }
+      }
+    };
+  }
+
+  subscribeTrade(symbol: string, callback: (trade: PublicTrade) => void) {
+    const sym = symbol.toUpperCase();
+    if (!this.tradeListeners.has(sym)) {
+      this.tradeListeners.set(sym, new Set());
+      this.send({ action: 'subscribe:ticker', symbol: sym });
+    }
+    this.tradeListeners.get(sym)!.add(callback);
+
+    return () => {
+      const listeners = this.tradeListeners.get(sym);
+      if (listeners) {
+        listeners.delete(callback);
+        if (listeners.size === 0) {
+          this.tradeListeners.delete(sym);
         }
       }
     };

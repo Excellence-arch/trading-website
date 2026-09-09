@@ -19,6 +19,69 @@
   100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
 }
 
+/* Glowing Laser Line Animation */
+@keyframes laserDashFlow {
+  from { stroke-dashoffset: 24; }
+  to { stroke-dashoffset: 0; }
+}
+
+/* Radar Ripple Rings */
+@keyframes radarRingExpand1 {
+  0% { r: 3px; opacity: 0.85; }
+  100% { r: 24px; opacity: 0; }
+}
+
+@keyframes radarRingExpand2 {
+  0% { r: 3px; opacity: 0.6; }
+  100% { r: 36px; opacity: 0; }
+}
+
+/* Watchlist Item Flash */
+@keyframes watchlistPulseUp {
+  0% { background-color: rgba(16, 185, 129, 0.3); border-color: rgba(16, 185, 129, 0.7); }
+  100% { background-color: transparent; border-color: transparent; }
+}
+
+@keyframes watchlistPulseDown {
+  0% { background-color: rgba(239, 68, 68, 0.3); border-color: rgba(239, 68, 68, 0.7); }
+  100% { background-color: transparent; border-color: transparent; }
+}
+
+/* Live Tape Order Flow Slide In */
+@keyframes tapeSlideIn {
+  from { transform: translateY(-8px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+/* Countdown Ring Progress Transition */
+.countdown-gauge {
+  transition: stroke-dashoffset 0.25s linear;
+}
+
+.laser-dash-anim {
+  animation: laserDashFlow 1s linear infinite;
+}
+
+.radar-wave-1 {
+  animation: radarRingExpand1 1.8s cubic-bezier(0.1, 0.7, 0.1, 1) infinite;
+}
+
+.radar-wave-2 {
+  animation: radarRingExpand2 1.8s cubic-bezier(0.1, 0.7, 0.1, 1) infinite 0.5s;
+}
+
+.tape-row-anim {
+  animation: tapeSlideIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.watchlist-tick-up {
+  animation: watchlistPulseUp 0.5s ease-out;
+}
+
+.watchlist-tick-down {
+  animation: watchlistPulseDown 0.5s ease-out;
+}
+
 .ticker-flash-up {
   animation: tickerPulseUp 0.6s ease-out;
 }

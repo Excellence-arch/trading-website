@@ -9,6 +9,7 @@ import {
   Minimize2,
   RefreshCw,
   SlidersHorizontal,
+  Sparkles,
 } from 'lucide-react';
 import type { Timeframe } from '@trading/types';
 import { useMarket } from '../../context/MarketContext';
@@ -32,6 +33,8 @@ interface ChartToolbarProps {
   onTakeSnapshot: () => void;
   isZenMode?: boolean;
   onToggleZenMode?: () => void;
+  isCyber3D?: boolean;
+  onToggleCyber3D?: () => void;
 }
 
 export function ChartToolbar({
@@ -42,11 +45,13 @@ export function ChartToolbar({
   onTakeSnapshot,
   isZenMode = false,
   onToggleZenMode,
+  isCyber3D = false,
+  onToggleCyber3D,
 }: ChartToolbarProps) {
   const { currentTimeframe, setCurrentTimeframe } = useMarket();
   const [indicatorsOpen, setIndicatorsOpen] = useState(false);
 
-  const timeframes: Timeframe[] = ['1m', '3m', '5m', '15m', '30m', '1h', '2h', '4h', '1D', '1W'];
+  const timeframes: Timeframe[] = ['5s', '15s', '30s', '1m', '5m', '15m', '1h', '4h', '1D'];
 
   const toggle = (key: keyof IndicatorToggles) => {
     setIndicators((prev) => ({ ...prev, [key]: !prev[key] }));
@@ -207,6 +212,22 @@ export function ChartToolbar({
         >
           <RefreshCw className="w-3.5 h-3.5" />
         </button>
+
+        {/* 3D Cyber Depth Mode Toggle */}
+        {onToggleCyber3D && (
+          <button
+            onClick={onToggleCyber3D}
+            className={`flex items-center gap-1.5 px-2.5 py-1 rounded border text-xs font-mono font-bold transition shadow-sm ${
+              isCyber3D
+                ? 'bg-gradient-to-r from-blue-600/30 to-emerald-600/30 border-emerald-500/50 text-emerald-400 shadow-emerald-500/20'
+                : 'bg-surface-subtle border-border text-slate-400 hover:text-white hover:border-slate-600'
+            }`}
+            title="Toggle Interactive 3D Cyber Depth Canvas"
+          >
+            <Sparkles className={`w-3.5 h-3.5 ${isCyber3D ? 'text-emerald-400 animate-pulse' : ''}`} />
+            <span className="hidden md:inline">3D DEPTH</span>
+          </button>
+        )}
 
         {/* Zen Mode / Maximize Graph */}
         {onToggleZenMode && (

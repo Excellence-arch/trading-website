@@ -12,6 +12,7 @@
     "@trading/calculations": "*",
     "@trading/indicators": "*",
     "@trading/types": "*",
+    "@types/three": "^0.185.4",
     "animate.css": "^4.1.1",
     "clsx": "^2.1.1",
     "lightweight-charts": "^4.2.1",
@@ -19,7 +20,8 @@
     "next": "^14.2.24",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "tailwind-merge": "^2.6.0"
+    "tailwind-merge": "^2.6.0",
+    "three": "^0.186.0"
   },
   "devDependencies": {
     "@types/node": "^20.14.0",

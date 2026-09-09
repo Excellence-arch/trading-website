@@ -1,5 +1,8 @@
 // Market Data Types
 export type Timeframe =
+  | '5s'
+  | '15s'
+  | '30s'
   | '1m'
   | '3m'
   | '5m'
@@ -399,8 +402,21 @@ export interface WSPaperUpdateMessage {
   };
 }
 
+export interface WSTradeMessage {
+  type: 'trade:update';
+  data: {
+    id: string;
+    symbol: string;
+    price: number;
+    amount: number;
+    side: 'BUY' | 'SELL';
+    timestamp: number;
+  };
+}
+
 export type WSServerMessage =
   | WSTickerMessage
   | WSCandleMessage
+  | WSTradeMessage
   | WSPaperUpdateMessage
   | { type: 'connection:status'; status: 'CONNECTED' | 'RECONNECTING' | 'DEMO_MODE'; message?: string };
